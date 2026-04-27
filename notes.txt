@@ -1,0 +1,26 @@
+to run the project
+docker compose up --build
+
+localhost:3000  → Dagster UI        (where they trigger the pipeline)
+MongoDB           (auto-started, no setup needed)
+
+localhost:9001  → MinIO Console UI  (can browse stored files)
+
+
+MongoDB:
+# Get inside the mongo container
+docker exec -it mongo mongosh
+
+# Then run these commands:
+show dbs                                    # see all databases
+use scrapy_db                               # switch to your db
+show collections
+db.kedraspider.find().limit(5)          # see 5 records
+db.kedraspider.countDocuments()         # count all records
+db.kedraspider.find().sort({ _id: -1 }).limit(5) 
+
+Docker:
+docker-compose down              # stops containers, volumes untouched
+docker-compose up --build    # Main command
+
+Logs are kept inside the minio bucket in a json format, specifically inside scrapy_data container

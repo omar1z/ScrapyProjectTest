@@ -1,0 +1,21 @@
+# scrapy
+# pymongo
+# dagster==1.13.2
+# dagster-webserver
+# boto3
+# python-dateutil
+# scrapy-user-agents==0.1.1
+# fake-useragent==1.5.1 
+
+# I added versions to everything just to make sure both of us will take the same versions
+
+scrapy==2.15.1
+pymongo==4.7.2
+dagster==1.13.2
+dagster-webserver==1.13.2
+python-dateutil==2.9.0
+scrapy-user-agents==0.1.1
+fake-useragent==1.5.1
+beautifulsoup4==4.12.3
+itemadapter==0.9.0
+minio==7.2.7           

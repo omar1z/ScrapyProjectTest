@@ -1,0 +1,11 @@
+*.pyc
+__pycache__/
+venv/
+.scrapy/
+httpcache/
+*.log
+try.json
+storage/
+dagster_home/
+.dagster/
+*.log

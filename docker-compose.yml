@@ -1,0 +1,92 @@
+# version: '3.9'
+
+# services:
+#   mongo:
+#     image: mongo:6
+#     container_name: mongo
+#     ports:
+#       - "27017:27017"
+
+#   scrapy:
+#     build: .
+#     container_name: scrapy_app
+#     depends_on:
+#       - mongo
+
+version: "3.9"
+
+services:
+  dagster:
+    build: .
+    working_dir: /app/dagster_kedra
+    ports:
+      - "${DAGSTER_PORT}:3000"
+    environment:
+      DAGSTER_HOME: /opt/dagster/dagster_home
+      PYTHONPATH: /app/dagster_kedra
+      MONGO_URI: ${MONGO_URI}
+      MONGO_DB: ${MONGO_DB}
+      MONGO_PROCESSED_DB: ${MONGO_PROCESSED_DB}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      STORAGE_HTML_PATH: ${STORAGE_HTML_PATH}
+      STORAGE_PDF_PATH: ${STORAGE_PDF_PATH}
+      PARTITION_START: ${PARTITION_START}
+      PARTITION_END: ${PARTITION_END}
+    volumes: 
+      - dagster_home:/opt/dagster/dagster_home
+    depends_on:
+      minio-setup:
+        condition: service_completed_successfully   # ← waits for bucket creation
+      mongo:
+        condition: service_started
+
+  mongo:
+    image: mongo
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  minio:
+    image: minio/minio
+    container_name: minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio-setup:                                     # creates bucket automatically
+    image: minio/mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD};
+        mc mb local/${MINIO_BUCKET} --ignore-existing;
+        echo 'Bucket created successfully';
+        exit 0;
+      "
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+
+volumes:
+  mongo_data:
+  minio_data:
+  dagster_home:
