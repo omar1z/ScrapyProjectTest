@@ -192,14 +192,14 @@ from scrapy import signals
 
 
 class StatsPipeline:
-
+ 
     @classmethod
     def from_crawler(cls, crawler):
         pipeline = cls()
         crawler.signals.connect(pipeline.spider_closed, signal=signals.spider_closed)
         pipeline.stats = crawler.stats
         return pipeline
-
+ 
     def open_spider(self, spider):
         self.minio_client = Minio(
             MINIO_ENDPOINT,
@@ -208,45 +208,69 @@ class StatsPipeline:
             secure=False
         )
         self.bucket = MINIO_BUCKET
-
+ 
         try:
             if not self.minio_client.bucket_exists(self.bucket):
                 self.minio_client.make_bucket(self.bucket)
         except Exception as e:
             spider.logger.error(f"Bucket check/create failed: {e}")
-
+ 
     def spider_closed(self, spider):
         stats = self.stats.get_stats()
-
-        # Read partition from spider attribute set in start_requests
         partition = getattr(spider, "partition", "unknown")
-
-        log_data = {
+        body_stats = getattr(spider, "body_stats", {})
+        timestamp = datetime.utcnow().isoformat()
+ 
+        # ── One JSON log per body ──────────────────────────────────────
+        for body, counts in body_stats.items():
+            body_log = {
+                "event": "body_finished",
+                "partition": partition,
+                "body": body,
+                "records_found": counts["found"],
+                "records_scraped": counts["scraped"],
+                "records_failed": counts["failed"],
+                "timestamp": timestamp,
+            }
+            encoded = json.dumps(body_log, indent=2).encode("utf-8")
+            safe_body = body.replace(" ", "_")
+            object_name = f"logs/{partition}_{safe_body}.json"
+            try:
+                self.minio_client.put_object(
+                    bucket_name=self.bucket,
+                    object_name=object_name,
+                    data=io.BytesIO(encoded),
+                    length=len(encoded),
+                    content_type="application/json"
+                )
+                spider.logger.info(f"Body log uploaded: {object_name}")
+            except Exception as e:
+                spider.logger.error(f"MinIO body log upload failed ({body}): {e}")
+ 
+        # ── Overall partition summary ──────────────────────────────────
+        summary = {
             "event": "partition_finished",
             "partition": partition,
+            "total_found": sum(c["found"] for c in body_stats.values()),
+            "total_scraped": sum(c["scraped"] for c in body_stats.values()),
+            "total_failed": sum(c["failed"] for c in body_stats.values()),
             "items_scraped": stats.get("item_scraped_count", 0),
             "requests": stats.get("downloader/request_count", 0),
             "responses_200": stats.get("downloader/response_status_count/200", 0),
             "failed_requests_404": stats.get("downloader/response_status_count/404", 0),
             "retries": stats.get("retry/count", 0),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": timestamp,
         }
-
-        json_data = json.dumps(log_data, indent=2)
-        encoded = json_data.encode("utf-8")
-
-        object_name = f"logs/partition_{partition}.json"
-
+        encoded_summary = json.dumps(summary, indent=2).encode("utf-8")
+        summary_key = f"logs/partition_{partition}_summary.json"
         try:
             self.minio_client.put_object(
                 bucket_name=self.bucket,
-                object_name=object_name,
-                
-                data=io.BytesIO(encoded),
-                length=len(encoded),
+                object_name=summary_key,
+                data=io.BytesIO(encoded_summary),
+                length=len(encoded_summary),
                 content_type="application/json"
             )
-            spider.logger.info(f"Log uploaded: {object_name}")
-
+            spider.logger.info(f"Summary log uploaded: {summary_key}")
         except Exception as e:
-            spider.logger.error(f"MinIO log upload failed: {e}")
+            spider.logger.error(f"MinIO summary log upload failed: {e}")

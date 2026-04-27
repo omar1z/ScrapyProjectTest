@@ -58,6 +58,7 @@ DOWNLOADER_MIDDLEWARES = {
     "scrapyKedra.middlewares.ScrapykedraDownloaderMiddleware": 543,
     'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
     'scrapy_user_agents.middlewares.RandomUserAgentMiddleware': 400,
+    'scrapyKedra.middlewares.FailureLoggingMiddleware': 550,
 }
 
 

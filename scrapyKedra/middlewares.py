@@ -104,12 +104,21 @@ class ScrapykedraDownloaderMiddleware:
 ###!! added by me !!###
 from scrapyKedra.utils.logger import log_event
 
+from scrapyKedra.utils.logger import log_event
+ 
 class FailureLoggingMiddleware:
-
+ 
     def process_exception(self, request, exception, spider):
+
+        body = request.meta.get("body") or request.meta.get("item", {}).get("body")
+ 
+        if body and hasattr(spider, "body_stats") and body in spider.body_stats:
+            spider.body_stats[body]["failed"] += 1
+ 
         log_event(
             "request_failed",
             partition=getattr(spider, "partition", None),
+            body=body,
             url=request.url,
             error=str(exception)
         )

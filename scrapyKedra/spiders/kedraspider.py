@@ -29,7 +29,19 @@ class KedraspiderSpider(scrapy.Spider):
             end = "01/02/2024"
             partition_date = "2024-01-01"
 
+        # Per-body counters — read by StatsPipeline at spider_closed
+        self.body_stats = {
+            body: {"found": 0, "scraped": 0, "failed": 0}
+            for body in bodies
+        }
+
         self.logger.info(f"Partition: {partition_date} | {start} → {end}")
+
+        log_event(
+            "partition_started",
+            partition=partition_date,
+            bodies=list(bodies.keys()),
+        )
 
         base_url = os.getenv("base_url")
 
@@ -44,7 +56,7 @@ class KedraspiderSpider(scrapy.Spider):
                 callback=self.parse,
                 meta={
                     "body": body_name,
-                    "partition": partition_date,   
+                    "partition": partition_date,
                     "start": start,
                     "end": end,
                 }
@@ -53,7 +65,11 @@ class KedraspiderSpider(scrapy.Spider):
     def parse(self, response):
 
         items = response.css("li.each-item")
-        
+        body = response.meta.get("body")
+
+        # Count every item found on this listing page toward this body
+        if body and hasattr(self, "body_stats"):
+            self.body_stats[body]["found"] += len(items)
 
         for item in items:
             item_data = {
@@ -98,18 +114,11 @@ class KedraspiderSpider(scrapy.Spider):
 
         identifier = response.meta["identifier"]
         item_data = response.meta["item"]
-        safe_id = identifier.replace("/", "_")
 
-        # file_path = f"storage/pdf/{safe_id}.pdf"
+        body = item_data.get("body")
+        if body and hasattr(self, "body_stats"):
+            self.body_stats[body]["scraped"] += 1
 
-        # with open(file_path, "wb") as f:
-        #     f.write(response.body)
-
-        # yield {
-        #     "item_data": item_data,
-        #     "file_path": file_path,
-        #     "file_type": "pdf"
-        # }
         yield {
             "item_data": item_data,
             "file_content": response.body,
@@ -120,35 +129,18 @@ class KedraspiderSpider(scrapy.Spider):
 
         identifier = response.meta["identifier"]
         item_data = response.meta["item"]
-        safe_id = identifier.replace("/", "_")
 
-        # content = response.css("div.container.mb-4").get() 
+        body = item_data.get("body")
+        if body and hasattr(self, "body_stats"):
+            self.body_stats[body]["scraped"] += 1
+
         content = response.css("body").get()
 
         if not content:
             content = response.text
 
-        # file_path = f"storage/html/{safe_id}.html"
-
-        # with open(file_path, "w", encoding="utf-8") as f:
-        #     f.write(content)
-
-        # yield {
-        #     "item_data": item_data,
-        #     "file_path": file_path,
-        #     "file_type": "html"
-        # }
-        
         yield {
             "item_data": item_data,
-            "file_content": content.encode("utf-8"), 
+            "file_content": content.encode("utf-8"),
             "file_type": "html"
         }
-        
-        
-    def open_spider(self, spider):
-        log_event(
-            "partition_started",
-            partition=getattr(spider, "partition", None),
-            body=getattr(spider, "body", None),
-        )
