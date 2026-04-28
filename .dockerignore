@@ -4,3 +4,7 @@ __pycache__
 .git
 storage
 *.log
+.gitignore
+notes.txt
+README.md
+ARCHITECTURE.MD
