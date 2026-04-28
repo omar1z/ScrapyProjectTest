@@ -1,4 +1,3 @@
-# dagster_kedra/assets/transformation.py
 import os
 import io
 import hashlib
@@ -108,7 +107,7 @@ def run_transformation(partition_date: str, log=None):
         if file_type == "html":
             final_content = clean_html(file_content)
         else:
-            final_content = file_content    # pdf/doc → no transformation
+            final_content = file_content    # pdf/doc no transformation
 
         new_key = f"{file_type}/{identifier}.{file_type}"
         new_hash = calculate_hash(final_content)
@@ -170,7 +169,7 @@ def transformed_documents(context: AssetExecutionContext):
     context.log.info(f"Transformation complete: {partition_date}")
 
 
-# ── Standalone (run directly without Dagster) ───────────────────────
-if __name__ == "__main__":
-    partition = os.getenv("TRANSFORM_PARTITION_DATE", "2024-01-01")
-    run_transformation(partition)
+# Standalone (run directly without Dagster)
+# if __name__ == "__main__":
+#     partition = os.getenv("TRANSFORM_PARTITION_DATE", "2024-01-01")
+#     run_transformation(partition)

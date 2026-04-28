@@ -23,8 +23,8 @@ ROBOTSTXT_OBEY = True
 
 # Concurrency and throttling settings
 #CONCURRENT_REQUESTS = 16
-CONCURRENT_REQUESTS_PER_DOMAIN = 1
-DOWNLOAD_DELAY = 1
+# CONCURRENT_REQUESTS_PER_DOMAIN = 1
+# DOWNLOAD_DELAY = 1
 
 # Disable cookies (enabled by default)
 #COOKIES_ENABLED = False
@@ -98,8 +98,8 @@ AUTOTHROTTLE_TARGET_CONCURRENCY = 4.0  # 4 requests at a time
 AUTOTHROTTLE_DEBUG = False
 
 
-CONCURRENT_REQUESTS = 16                # total parallel requests
-CONCURRENT_REQUESTS_PER_DOMAIN = 8     # per domain limit
+CONCURRENT_REQUESTS = 16                # total parallel requests only for 1 scrapy 
+CONCURRENT_REQUESTS_PER_DOMAIN = 8     # per domain limit only for 1 scrapy
 DOWNLOAD_DELAY = 0                      # let AutoThrottle handle delay
 
 # Enable and configure HTTP caching (disabled by default)

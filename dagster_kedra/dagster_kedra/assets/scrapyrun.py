@@ -1,19 +1,18 @@
 import subprocess
 import os
 from pathlib import Path
-from dagster import asset, AssetExecutionContext
+from dagster import RetryPolicy, asset, AssetExecutionContext
 from dagster_kedra.partitions import monthly_partitions
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 
-@asset(partitions_def=monthly_partitions)
+@asset(partitions_def=monthly_partitions, retry_policy=RetryPolicy(max_retries=3))
 def scraped_documents(context: AssetExecutionContext):
 
     # Dagster gives you the partition key e.g. "2024-01-01"
     partition_date = context.partition_key
 
     # Calculate end of month automatically
-    from datetime import datetime
-    from dateutil.relativedelta import relativedelta
-
     start_dt = datetime.strptime(partition_date, "%Y-%m-%d")
     end_dt = start_dt + relativedelta(months=1)
 

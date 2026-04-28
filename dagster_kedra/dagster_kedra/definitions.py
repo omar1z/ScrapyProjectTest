@@ -1,4 +1,4 @@
-from dagster import Definitions, define_asset_job, AssetSelection
+from dagster import Definitions, define_asset_job, AssetSelection, multiprocess_executor
 from .assets.scrapyrun import scraped_documents
 from .assets.transformation import transformed_documents
 
