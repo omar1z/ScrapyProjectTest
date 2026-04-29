@@ -281,8 +281,8 @@ class StatsPipeline:
             "failed_requests_404": stats.get("downloader/response_status_count/404", 0),
             "retries": stats.get("retry/count", 0),
             "timestamp": timestamp,
-            "mongo_skipped": stats.get("mongo/skipped_unchanged records", 0),  
-            "minio_skipped": stats.get("minio/skipped_unchanged records", 0),
+            "mongo_skipped": stats.get("mongo/skipped_unchanged", 0),  
+            "minio_skipped": stats.get("minio/skipped_unchanged", 0),
         }
         encoded_summary = json.dumps(summary, indent=2).encode("utf-8")
         summary_key = f"logs/partition_{partition}_summary.json"
