@@ -24,3 +24,18 @@ docker-compose down              # stops containers, volumes untouched
 docker-compose up --build    # Main command
 
 Logs are kept inside the minio bucket in a json format, specifically inside scrapy_data container
+
+
+
+
+
+
+#########
+docker exec -it minio sh
+ls /data
+now we can see the 2 buckets
+#########
+docker compose exec dagster sh
+cd app
+this as well will save volumes inside the vm of docker
+to enter Dagster HOME

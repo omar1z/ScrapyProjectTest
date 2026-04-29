@@ -58,7 +58,7 @@ class MongoPipeline:
         # Calculate hash from file_content directly
         file_hash = calculate_hash(file_content)
 
-        #remove body content, stored alone in bucket
+        #remove body content, the content will be stored alone in bucket
         item_data.pop("file_content", None)
 
         if file_type:
@@ -80,11 +80,12 @@ class MongoPipeline:
 
         if existing:
             if existing.get("file_hash") == file_hash:
-                # Same content → skip
-                spider.logger.info(f"Unchanged, skipping: {identifier}")
+                # Same content -> skip
+                spider.crawler.stats.inc_value("mongo/skipped_unchanged")
+                spider.logger.info(f"Unchanged, skipping db insertion for: {identifier}")
                 return item
             else:
-                # Content changed → update
+                # Content changed -> update
                 self.db[spider.name].update_one(
                     {"descIdentifier": identifier, "partition_date": partition_date},
                     {"$set": item_data}
@@ -112,6 +113,7 @@ from scrapyKedra.config import (
 class S3Pipeline:
 
     def open_spider(self, spider):
+        # MinIO client
         self.minio = Minio(
             MINIO_ENDPOINT,     
             access_key=MINIO_ACCESS_KEY,
@@ -120,15 +122,19 @@ class S3Pipeline:
         )
         self.bucket = MINIO_BUCKET
 
-        # Auto-create bucket if it doesn't exist
+        # MongoDB client for hash pre-check
+        self.client = pymongo.MongoClient(MONGO_URI)
+        self.db = self.client[MONGO_DB]
+
         try:
-            if self.minio.bucket_exists(self.bucket):
-                spider.logger.info(f"Bucket '{self.bucket}' already exists")
-            else:
+            if not self.minio.bucket_exists(self.bucket):
                 self.minio.make_bucket(self.bucket)
                 spider.logger.info(f"Bucket '{self.bucket}' created successfully")
         except Exception as e:
             spider.logger.error(f"Bucket check/create failed: {e}")
+
+    def close_spider(self, spider):
+        self.client.close()
 
     def process_item(self, item, spider):
         data = ItemAdapter(item).asdict()
@@ -140,8 +146,24 @@ class S3Pipeline:
         if not file_content:
             return item
 
-        identifier = item_data.get("descIdentifier", "unknown").replace("/", "_")
-        file_key = f"{file_type}/{identifier}.{file_type}"
+        identifier = item_data.get("descIdentifier")
+        partition_date = item_data.get("partition_date")
+        incoming_hash = calculate_hash(file_content)
+
+        # Check MongoDB for existing record with same hash
+        existing = self.db[spider.name].find_one({
+            "descIdentifier": identifier,
+            "partition_date": partition_date
+        })
+
+        if existing and existing.get("file_hash") == incoming_hash:
+            spider.crawler.stats.inc_value("minio/skipped_unchanged")
+            spider.logger.info(f"Hash unchanged, skipping MinIO upload: {identifier}")
+            return item
+
+        # Hash differs or record is new then upload
+        safe_identifier = identifier.replace("/", "_")
+        file_key = f"{file_type}/{safe_identifier}.{file_type}"
 
         try:
             self.minio.put_object(
@@ -150,7 +172,6 @@ class S3Pipeline:
                 io.BytesIO(file_content),
                 length=len(file_content)
             )
-            # ← set directly on item, not on the copy
             item["item_data"]["file_key"] = file_key
             item["item_data"]["file_type"] = file_type
             spider.logger.info(f"Uploaded to MinIO: {file_key}")
@@ -260,6 +281,8 @@ class StatsPipeline:
             "failed_requests_404": stats.get("downloader/response_status_count/404", 0),
             "retries": stats.get("retry/count", 0),
             "timestamp": timestamp,
+            "mongo_skipped": stats.get("mongo/skipped_unchanged records", 0),  
+            "minio_skipped": stats.get("minio/skipped_unchanged records", 0),
         }
         encoded_summary = json.dumps(summary, indent=2).encode("utf-8")
         summary_key = f"logs/partition_{partition}_summary.json"

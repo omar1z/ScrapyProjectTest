@@ -27,7 +27,7 @@ ROBOTSTXT_OBEY = True
 # DOWNLOAD_DELAY = 1
 
 # Disable cookies (enabled by default)
-#COOKIES_ENABLED = False
+COOKIES_ENABLED = True
 
 # Disable Telnet Console (enabled by default)
 #TELNETCONSOLE_ENABLED = False
@@ -55,6 +55,7 @@ DEFAULT_REQUEST_HEADERS = {
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 
 DOWNLOADER_MIDDLEWARES = {
+    'scrapy.downloadermiddlewares.httpproxy.HttpProxyMiddleware': 1, # basic proxy, for ip's
     "scrapyKedra.middlewares.ScrapykedraDownloaderMiddleware": 543,
     'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
     'scrapy_user_agents.middlewares.RandomUserAgentMiddleware': 400,
@@ -94,12 +95,12 @@ ITEM_PIPELINES = {
 AUTOTHROTTLE_ENABLED = True
 AUTOTHROTTLE_START_DELAY = 0.5    # start fast
 AUTOTHROTTLE_MAX_DELAY = 10       # slow down if server struggles
-AUTOTHROTTLE_TARGET_CONCURRENCY = 4.0  # 4 requests at a time
+AUTOTHROTTLE_TARGET_CONCURRENCY = 2 # 4 requests at a time
 AUTOTHROTTLE_DEBUG = False
 
 
 CONCURRENT_REQUESTS = 16                # total parallel requests only for 1 scrapy 
-CONCURRENT_REQUESTS_PER_DOMAIN = 8     # per domain limit only for 1 scrapy
+CONCURRENT_REQUESTS_PER_DOMAIN = 4     # per domain limit only for 1 scrapy
 DOWNLOAD_DELAY = 0                      # let AutoThrottle handle delay
 
 # Enable and configure HTTP caching (disabled by default)
