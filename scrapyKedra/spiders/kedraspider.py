@@ -1,3 +1,5 @@
+import re
+
 import scrapy
 import os
 
@@ -66,9 +68,15 @@ class KedraspiderSpider(scrapy.Spider):
 
         items = response.css("li.each-item")
         body = response.meta.get("body")
+        
+        total_text = response.css("div.searchhead").get()
+        match = re.search(r"of\s+([\d,]+)\s+results", total_text)
+        total = int(match.group(1).replace(",", "")) if match else 0
 
         # Count every item found on this listing page toward this body
         if body and hasattr(self, "body_stats"):
+            if self.body_stats[body]["found"] == 0:  # first page only
+                self.body_stats[body]["total"] = total
             self.body_stats[body]["found"] += len(items)
 
         for item in items:
@@ -112,7 +120,6 @@ class KedraspiderSpider(scrapy.Spider):
             
     def save_binary(self, response):
 
-        identifier = response.meta["identifier"]
         item_data = response.meta["item"]
 
         body = item_data.get("body")
@@ -127,7 +134,6 @@ class KedraspiderSpider(scrapy.Spider):
         
     def parse_html_page(self, response):
 
-        identifier = response.meta["identifier"]
         item_data = response.meta["item"]
 
         body = item_data.get("body")

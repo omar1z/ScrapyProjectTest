@@ -50,7 +50,7 @@ class MongoPipeline:
 
     def process_item(self, item, spider):
         data = ItemAdapter(item).asdict()
-
+        
         item_data = data.get("item_data", {})
         file_type = data.get("file_type")
         file_content = data.get("file_content")  
@@ -248,7 +248,7 @@ class StatsPipeline:
                 "event": "body_finished",
                 "partition": partition,
                 "body": body,
-                "records_found": counts["found"],
+                "records_found": counts.get("total", 0),
                 "records_scraped": counts["scraped"],
                 "records_failed": counts["failed"],
                 "timestamp": timestamp,
@@ -272,7 +272,7 @@ class StatsPipeline:
         summary = {
             "event": "partition_finished",
             "partition": partition,
-            "total_found": sum(c["found"] for c in body_stats.values()),
+            "total_found": sum(c["total"] for c in body_stats.values()),
             "total_scraped": sum(c["scraped"] for c in body_stats.values()),
             "total_failed": sum(c["failed"] for c in body_stats.values()),
             "items_scraped": stats.get("item_scraped_count", 0),
