@@ -20,10 +20,8 @@ Idempotency is enforced at two levels. In the **landing zone**, `MongoPipeline` 
 
 The current design would need four changes to support 50+ sources cleanly:
 
-1. **Source-driven configuration.** The bodies dict and base URL inside the spider would move to a YAML/JSON config file, with one entry per source. A factory function or a per-source spider class would replace the hardcoded `bodies` dict so each source can have its own pagination logic, CSS selectors, and authentication headers without forking the codebase.
+1. **Source-driven configuration.** The bodies dict and base URL inside the spider would move to a YAML/JSON config file, with one entry per source. A factory function or a per-source spider class would replace the hardcoded `bodies` dict so each source can have its own pagination logic, CSS selectors, and authentication headers.
 
 2. **Per-source Dagster jobs/assets.** Rather than one monolithic `scraped_documents` asset, each source would become its own partitioned asset (or a dynamic job with `DynamicPartitionsDefinition`). This allows sources with different publication cadences (daily vs. monthly) to be scheduled independently and failed sources to be retried without touching others.
 
 3. **Distributed execution.** Launching Scrapy as a subprocess works for a single source but becomes a bottleneck at scale. The pipeline would move to Scrapy Cluster or a queue-backed architecture (e.g. Redis + Scrapyd) so multiple spiders run concurrently on separate workers, with Dagster acting purely as the scheduler and dependency graph manager.
-
-4. **Schema registry and validation.** With many sources producing heterogeneous metadata, a lightweight schema registry (e.g. a Pydantic model per source) would validate extracted fields before they reach MongoDB, catching selector drift early. A dead-letter collection for validation failures would replace silent `None` values in the current item dict.
